@@ -127,16 +127,30 @@ mod tests {
 
     #[test]
     fn test_red_contains_ansi_codes() {
-        // Test the format structure (actual color depends on NO_COLOR env)
-        let formatted = format!("\x1b[31m{}\x1b[0m", "error");
-        assert!(formatted.contains("\x1b[31m"));
-        assert!(formatted.contains("\x1b[0m"));
+        let text = "error";
+        let formatted = red(text);
+
+        if is_enabled() {
+            assert!(formatted.contains("\x1b[31m"));
+            assert!(formatted.contains(text));
+            assert!(formatted.contains("\x1b[0m"));
+        } else {
+            assert_eq!(formatted, text);
+        }
     }
 
     #[test]
     fn test_green_contains_ansi_codes() {
-        let formatted = format!("\x1b[32m{}\x1b[0m", "success");
-        assert!(formatted.contains("\x1b[32m"));
+        let text = "success";
+        let formatted = green(text);
+
+        if is_enabled() {
+            assert!(formatted.contains("\x1b[32m"));
+            assert!(formatted.contains(text));
+            assert!(formatted.contains("\x1b[0m"));
+        } else {
+            assert_eq!(formatted, text);
+        }
     }
 
     #[test]
