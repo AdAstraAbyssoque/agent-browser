@@ -709,6 +709,21 @@ const snapshotSchema = baseCommandSchema.extend({
   selector: z.string().optional(),
 });
 
+const readableSchema = baseCommandSchema.extend({
+  action: z.literal('readable'),
+  selector: z.string().optional(),
+  maxDepth: z.number().nonnegative().optional(),
+  maxItems: z.number().positive().optional(),
+  maxListItems: z.number().positive().optional(),
+  maxLineLength: z.number().positive().optional(),
+  filterMode: z.enum(['summary', 'compact', 'full']).optional(),
+  links: z.boolean().optional(),
+  dedupe: z.boolean().optional(),
+  dedupeWindow: z.number().positive().optional(),
+  includeFooter: z.boolean().optional(),
+  includeShell: z.boolean().optional(),
+});
+
 const evaluateSchema = baseCommandSchema.extend({
   action: z.literal('evaluate'),
   script: z.string().min(1),
@@ -803,6 +818,7 @@ const commandSchema = z.discriminatedUnion('action', [
   pressSchema,
   screenshotSchema,
   snapshotSchema,
+  readableSchema,
   evaluateSchema,
   waitSchema,
   scrollSchema,

@@ -738,6 +738,25 @@ export interface ScreenshotCommand extends BaseCommand {
 
 export interface SnapshotCommand extends BaseCommand {
   action: 'snapshot';
+  interactive?: boolean;
+  maxDepth?: number;
+  compact?: boolean;
+  selector?: string;
+}
+
+export interface ReadableCommand extends BaseCommand {
+  action: 'readable';
+  selector?: string;
+  maxDepth?: number;
+  maxItems?: number;
+  maxListItems?: number;
+  maxLineLength?: number;
+  filterMode?: 'summary' | 'compact' | 'full';
+  links?: boolean;
+  dedupe?: boolean;
+  dedupeWindow?: number;
+  includeFooter?: boolean;
+  includeShell?: boolean;
 }
 
 export interface EvaluateCommand extends BaseCommand {
@@ -829,6 +848,7 @@ export type Command =
   | PressCommand
   | ScreenshotCommand
   | SnapshotCommand
+  | ReadableCommand
   | EvaluateCommand
   | WaitCommand
   | ScrollCommand
@@ -961,6 +981,17 @@ export interface ScreenshotData {
 
 export interface SnapshotData {
   snapshot: string;
+  refs?: Record<string, { role: string; name?: string }>;
+}
+
+export interface ReadableData {
+  readable: string;
+  truncated?: boolean;
+  stats?: {
+    lines: number;
+    maxDepth: number;
+    items: number;
+  };
 }
 
 export interface EvaluateData {

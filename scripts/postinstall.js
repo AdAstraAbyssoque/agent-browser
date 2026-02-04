@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Postinstall script for agent-browser
+ * Postinstall script for agent-browser-readable
  * 
  * Downloads the platform-specific native binary if not present.
  * On global installs, patches npm's bin entry to use the native binary directly:
@@ -30,10 +30,11 @@ const binaryPath = join(binDir, binaryName);
 const packageJson = JSON.parse(
   (await import('fs')).readFileSync(join(projectRoot, 'package.json'), 'utf8')
 );
+const packageName = packageJson.name || 'agent-browser-readable';
 const version = packageJson.version;
 
 // GitHub release URL
-const GITHUB_REPO = 'vercel-labs/agent-browser';
+const GITHUB_REPO = 'AdAstraAbyssoque/agent-browser';
 const DOWNLOAD_URL = `https://github.com/${GITHUB_REPO}/releases/download/v${version}/${binaryName}`;
 
 async function downloadFile(url, dest) {
@@ -205,7 +206,7 @@ async function fixWindowsShims() {
   }
 
   // Path to native binary relative to npm prefix
-  const relativeBinaryPath = 'node_modules\\agent-browser\\bin\\agent-browser-win32-x64.exe';
+  const relativeBinaryPath = `node_modules\\${packageName}\\bin\\agent-browser-win32-x64.exe`;
 
   try {
     // Overwrite .cmd shim

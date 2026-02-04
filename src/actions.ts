@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import type { BrowserManager, ScreencastFrame } from './browser.js';
 import { getAppDir } from './daemon.js';
+import { getReadableText } from './readable.js';
 import type {
   Command,
   Response,
@@ -23,6 +24,7 @@ import type {
   GetByPlaceholderCommand,
   PressCommand,
   ScreenshotCommand,
+  ReadableCommand,
   EvaluateCommand,
   WaitCommand,
   ScrollCommand,
@@ -109,6 +111,7 @@ import type {
   RecordingRestartCommand,
   NavigateData,
   ScreenshotData,
+  ReadableData,
   EvaluateData,
   ContentData,
   TabListData,
@@ -249,6 +252,8 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleScreenshot(command, browser);
       case 'snapshot':
         return await handleSnapshot(command, browser);
+      case 'readable':
+        return await handleReadable(command, browser);
       case 'evaluate':
         return await handleEvaluate(command, browser);
       case 'wait':
@@ -480,13 +485,20 @@ async function handleNavigate(
   browser: BrowserManager
 ): Promise<Response<NavigateData>> {
   const page = browser.getPage();
+  const resolvedLink = browser.resolveReadableLink(command.url, page.url());
+  if (!resolvedLink && browser.isReadableLinkRef(command.url)) {
+    throw new Error(
+      `Link ref "${command.url}" not found. Run 'readable' first or ensure links are enabled.`
+    );
+  }
+  const targetUrl = resolvedLink ?? command.url;
 
   // If headers are provided, set up scoped headers for this origin
   if (command.headers && Object.keys(command.headers).length > 0) {
-    await browser.setScopedHeaders(command.url, command.headers);
+    await browser.setScopedHeaders(targetUrl, command.headers);
   }
 
-  await page.goto(command.url, {
+  await page.goto(targetUrl, {
     waitUntil: command.waitUntil ?? 'load',
   });
 
@@ -497,6 +509,18 @@ async function handleNavigate(
 }
 
 async function handleClick(command: ClickCommand, browser: BrowserManager): Promise<Response> {
+  const page = browser.getPage();
+  const resolvedLink = browser.resolveReadableLink(command.selector, page.url());
+  if (resolvedLink) {
+    await page.goto(resolvedLink, { waitUntil: 'load' });
+    return successResponse(command.id, { clicked: true });
+  }
+  if (browser.isReadableLinkRef(command.selector)) {
+    throw new Error(
+      `Link ref "${command.selector}" not found. Run 'readable' first or ensure links are enabled.`
+    );
+  }
+
   // Support both refs (@e1) and regular selectors
   const locator = browser.getLocator(command.selector);
 
@@ -612,6 +636,33 @@ async function handleSnapshot(
   return successResponse(command.id, {
     snapshot: tree || 'Empty page',
     refs: Object.keys(simpleRefs).length > 0 ? simpleRefs : undefined,
+  });
+}
+
+async function handleReadable(
+  command: ReadableCommand,
+  browser: BrowserManager
+): Promise<Response<ReadableData>> {
+  const page = browser.getPage();
+  const result = await getReadableText(page, {
+    selector: command.selector,
+    maxDepth: command.maxDepth,
+    maxItems: command.maxItems,
+    maxListItems: command.maxListItems,
+    maxLineLength: command.maxLineLength,
+    filterMode: command.filterMode,
+    links: command.links,
+    dedupe: command.dedupe,
+    dedupeWindow: command.dedupeWindow,
+    includeFooter: command.includeFooter,
+    includeShell: command.includeShell,
+  });
+  browser.setReadableLinks(result.links ?? []);
+
+  return successResponse(command.id, {
+    readable: result.text || 'Empty page',
+    truncated: result.truncated || undefined,
+    stats: result.stats,
   });
 }
 

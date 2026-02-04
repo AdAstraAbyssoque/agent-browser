@@ -479,6 +479,47 @@ describe('parseCommand', () => {
     });
   });
 
+  describe('readable', () => {
+    it('should parse basic readable command', () => {
+      const result = parseCommand(cmd({ id: '1', action: 'readable' }));
+      expect(result.success).toBe(true);
+    });
+
+    it('should parse readable with options', () => {
+      const result = parseCommand(
+        cmd({
+          id: '1',
+          action: 'readable',
+          selector: 'main',
+          maxDepth: 4,
+          maxItems: 120,
+          maxListItems: 15,
+          maxLineLength: 200,
+          filterMode: 'compact',
+          links: false,
+          dedupe: false,
+          dedupeWindow: 50,
+          includeFooter: true,
+          includeShell: true,
+        })
+      );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.command.selector).toBe('main');
+        expect(result.command.maxDepth).toBe(4);
+        expect(result.command.maxItems).toBe(120);
+        expect(result.command.maxListItems).toBe(15);
+        expect(result.command.maxLineLength).toBe(200);
+        expect(result.command.filterMode).toBe('compact');
+        expect(result.command.links).toBe(false);
+        expect(result.command.dedupe).toBe(false);
+        expect(result.command.dedupeWindow).toBe(50);
+        expect(result.command.includeFooter).toBe(true);
+        expect(result.command.includeShell).toBe(true);
+      }
+    });
+  });
+
   describe('launch', () => {
     it('should parse launch command', () => {
       const result = parseCommand(cmd({ id: '1', action: 'launch' }));

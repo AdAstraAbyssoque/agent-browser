@@ -1,20 +1,23 @@
-# agent-browser
+# agent-browser-readable
 
 Headless browser automation CLI for AI agents. Fast Rust CLI with Node.js fallback.
+
+This project is based on AB's `agent-browser`, with a focus on a cleaner `readable` flow for AI usage.
+You can use `readable` to quickly get a Markdown-friendly page summary.
 
 ## Installation
 
 ### npm (recommended)
 
 ```bash
-npm install -g agent-browser
+npm install -g agent-browser-readable
 agent-browser install  # Download Chromium
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/vercel-labs/agent-browser
+git clone -b main https://github.com/AdAstraAbyssoque/agent-browser.git
 cd agent-browser
 pnpm install
 pnpm build
@@ -36,12 +39,22 @@ agent-browser install --with-deps
 
 ```bash
 agent-browser open example.com
+agent-browser readable                    # Markdown-friendly page summary
 agent-browser snapshot                    # Get accessibility tree with refs
 agent-browser click @e2                   # Click by ref from snapshot
 agent-browser fill @e3 "test@example.com" # Fill by ref
 agent-browser get text @e1                # Get text by ref
 agent-browser screenshot page.png
 agent-browser close
+```
+
+## Readable Summary (Markdown-Friendly)
+
+```bash
+agent-browser readable
+agent-browser readable -s article
+agent-browser readable --include-shell
+agent-browser open @L1                    # Open link ref from readable output
 ```
 
 ### Traditional Selectors (also supported)
@@ -480,7 +493,7 @@ AGENT_BROWSER_EXECUTABLE_PATH=/path/to/chromium agent-browser open example.com
 
 ```typescript
 import chromium from '@sparticuz/chromium';
-import { BrowserManager } from 'agent-browser';
+import { BrowserManager } from 'agent-browser-readable';
 
 export async function handler() {
   const browser = new BrowserManager();
@@ -592,7 +605,7 @@ Connect to `ws://localhost:9223` to receive frames and send input:
 For advanced use, control streaming directly via the protocol:
 
 ```typescript
-import { BrowserManager } from 'agent-browser';
+import { BrowserManager } from 'agent-browser-readable';
 
 const browser = new BrowserManager();
 await browser.launch({ headless: true });
@@ -668,7 +681,7 @@ The `--help` output is comprehensive and most agents can figure it out from ther
 Add the skill to your AI coding assistant for richer context:
 
 ```bash
-npx skills add vercel-labs/agent-browser
+npx skills add AdAstraAbyssoque/agent-browser
 ```
 
 This works with Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, Goose, OpenCode, and Windsurf.

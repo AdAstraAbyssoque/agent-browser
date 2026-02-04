@@ -76,6 +76,21 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
     let rest: Vec<&str> = args[1..].iter().map(|s| s.as_str()).collect();
     let id = gen_id();
 
+    fn is_readable_link_ref(raw: &str) -> bool {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            return false;
+        }
+        let trimmed = trimmed.trim_start_matches('[').trim_end_matches(']');
+        let trimmed = trimmed.strip_prefix('@').unwrap_or(trimmed);
+        let mut chars = trimmed.chars();
+        match chars.next() {
+            Some('L') | Some('l') => {}
+            _ => return false,
+        }
+        chars.all(|c| c.is_ascii_digit())
+    }
+
     match cmd {
         // === Navigation ===
         "open" | "goto" | "navigate" => {
@@ -84,7 +99,9 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
                 usage: "open <url>",
             })?;
             let url_lower = url.to_lowercase();
-            let url = if url_lower.starts_with("http://")
+            let url = if is_readable_link_ref(url) {
+                url.to_string()
+            } else if url_lower.starts_with("http://")
                 || url_lower.starts_with("https://")
                 || url_lower.starts_with("about:")
                 || url_lower.starts_with("data:")
@@ -408,6 +425,90 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
                             obj.insert("selector".to_string(), json!(s));
                             i += 1;
                         }
+                    }
+                    _ => {}
+                }
+                i += 1;
+            }
+            Ok(cmd)
+        }
+
+        // === Readable ===
+        "readable" => {
+            let mut cmd = json!({ "id": id, "action": "readable" });
+            let obj = cmd.as_object_mut().unwrap();
+            let mut i = 0;
+            while i < rest.len() {
+                match rest[i] {
+                    "-d" | "--depth" => {
+                        if let Some(d) = rest.get(i + 1) {
+                            if let Ok(n) = d.parse::<i32>() {
+                                obj.insert("maxDepth".to_string(), json!(n));
+                                i += 1;
+                            }
+                        }
+                    }
+                    "-s" | "--selector" => {
+                        if let Some(s) = rest.get(i + 1) {
+                            obj.insert("selector".to_string(), json!(s));
+                            i += 1;
+                        }
+                    }
+                    "-l" | "--limit" => {
+                        if let Some(l) = rest.get(i + 1) {
+                            if let Ok(n) = l.parse::<i32>() {
+                                obj.insert("maxItems".to_string(), json!(n));
+                                i += 1;
+                            }
+                        }
+                    }
+                    "--list-limit" => {
+                        if let Some(l) = rest.get(i + 1) {
+                            if let Ok(n) = l.parse::<i32>() {
+                                obj.insert("maxListItems".to_string(), json!(n));
+                                i += 1;
+                            }
+                        }
+                    }
+                    "--line-length" => {
+                        if let Some(l) = rest.get(i + 1) {
+                            if let Ok(n) = l.parse::<i32>() {
+                                obj.insert("maxLineLength".to_string(), json!(n));
+                                i += 1;
+                            }
+                        }
+                    }
+                    "--filters" => {
+                        if let Some(mode) = rest.get(i + 1) {
+                            obj.insert("filterMode".to_string(), json!(mode));
+                            i += 1;
+                        }
+                    }
+                    "--links" => {
+                        obj.insert("links".to_string(), json!(true));
+                    }
+                    "--no-links" => {
+                        obj.insert("links".to_string(), json!(false));
+                    }
+                    "--dedupe" => {
+                        obj.insert("dedupe".to_string(), json!(true));
+                    }
+                    "--no-dedupe" => {
+                        obj.insert("dedupe".to_string(), json!(false));
+                    }
+                    "--dedupe-window" => {
+                        if let Some(l) = rest.get(i + 1) {
+                            if let Ok(n) = l.parse::<i32>() {
+                                obj.insert("dedupeWindow".to_string(), json!(n));
+                                i += 1;
+                            }
+                        }
+                    }
+                    "--include-footer" => {
+                        obj.insert("includeFooter".to_string(), json!(true));
+                    }
+                    "--include-shell" => {
+                        obj.insert("includeShell".to_string(), json!(true));
                     }
                     _ => {}
                 }
@@ -1596,6 +1697,20 @@ mod tests {
     }
 
     #[test]
+    fn test_navigate_with_link_ref() {
+        let cmd = parse_command(&args("open @L12"), &default_flags()).unwrap();
+        assert_eq!(cmd["action"], "navigate");
+        assert_eq!(cmd["url"], "@L12");
+    }
+
+    #[test]
+    fn test_navigate_with_bare_link_ref() {
+        let cmd = parse_command(&args("open L7"), &default_flags()).unwrap();
+        assert_eq!(cmd["action"], "navigate");
+        assert_eq!(cmd["url"], "L7");
+    }
+
+    #[test]
     fn test_navigate_with_headers() {
         let mut flags = default_flags();
         flags.headers = Some(r#"{"Authorization": "Bearer token"}"#.to_string());
@@ -1867,6 +1982,36 @@ mod tests {
         let cmd = parse_command(&args("snapshot -d 3"), &default_flags()).unwrap();
         assert_eq!(cmd["action"], "snapshot");
         assert_eq!(cmd["maxDepth"], 3);
+    }
+
+    // === Readable ===
+
+    #[test]
+    fn test_readable() {
+        let cmd = parse_command(&args("readable"), &default_flags()).unwrap();
+        assert_eq!(cmd["action"], "readable");
+    }
+
+    #[test]
+    fn test_readable_options() {
+        let cmd = parse_command(
+            &args(
+                "readable -s main -d 4 -l 120 --list-limit 15 --line-length 200 --filters compact --no-links --dedupe-window 50 --include-footer",
+            ),
+            &default_flags(),
+        )
+        .unwrap();
+        assert_eq!(cmd["action"], "readable");
+        assert_eq!(cmd["selector"], "main");
+        assert_eq!(cmd["maxDepth"], 4);
+        assert_eq!(cmd["maxItems"], 120);
+        assert_eq!(cmd["maxListItems"], 15);
+        assert_eq!(cmd["maxLineLength"], 200);
+        assert_eq!(cmd["filterMode"], "compact");
+        assert_eq!(cmd["links"], false);
+        assert_eq!(cmd["dedupeWindow"], 50);
+        assert_eq!(cmd["includeFooter"], true);
+        assert_eq!(cmd["includeShell"], true);
     }
 
     // === Wait ===

@@ -20,6 +20,18 @@ import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import type { LaunchCommand } from './types.js';
 import { type RefMap, type EnhancedSnapshot, getEnhancedSnapshot, parseRef } from './snapshot.js';
 
+const READABLE_LINK_REF = /^L\d+$/i;
+
+function normalizeReadableLinkRef(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const unwrapped = trimmed.replace(/^\[+/, '').replace(/\]+$/, '');
+  const withoutAt = unwrapped.startsWith('@') ? unwrapped.slice(1) : unwrapped;
+  const normalized = withoutAt.toUpperCase();
+  if (!READABLE_LINK_REF.test(normalized)) return null;
+  return normalized;
+}
+
 // Screencast frame data from CDP
 export interface ScreencastFrame {
   data: string; // base64 encoded image
@@ -88,6 +100,7 @@ export class BrowserManager {
   private isRecordingHar: boolean = false;
   private refMap: RefMap = {};
   private lastSnapshot: string = '';
+  private readableLinkMap: Map<string, string> = new Map();
   private scopedHeaderRoutes: Map<string, (route: Route) => Promise<void>> = new Map();
 
   // CDP session for screencast and input injection
@@ -131,6 +144,36 @@ export class BrowserManager {
    */
   getRefMap(): RefMap {
     return this.refMap;
+  }
+
+  setReadableLinks(links: Array<{ ref: string; href: string }>): void {
+    this.readableLinkMap.clear();
+    for (const link of links) {
+      const ref = normalizeReadableLinkRef(link.ref);
+      if (!ref || !link.href) continue;
+      this.readableLinkMap.set(ref, link.href);
+    }
+  }
+
+  isReadableLinkRef(value: string): boolean {
+    return normalizeReadableLinkRef(value) !== null;
+  }
+
+  getReadableLinkHref(value: string): string | null {
+    const ref = normalizeReadableLinkRef(value);
+    if (!ref) return null;
+    return this.readableLinkMap.get(ref) ?? null;
+  }
+
+  resolveReadableLink(value: string, baseUrl?: string): string | null {
+    const href = this.getReadableLinkHref(value);
+    if (!href) return null;
+    if (!baseUrl) return href;
+    try {
+      return new URL(href, baseUrl).toString();
+    } catch {
+      return href;
+    }
   }
 
   /**

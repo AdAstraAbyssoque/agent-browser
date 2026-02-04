@@ -32,6 +32,11 @@ pub fn print_response(resp: &Response, json_mode: bool, action: Option<&str>) {
             println!("{}", snapshot);
             return;
         }
+        // Readable
+        if let Some(readable) = data.get("readable").and_then(|v| v.as_str()) {
+            println!("{}", readable);
+            return;
+        }
         // Title
         if let Some(title) = data.get("title").and_then(|v| v.as_str()) {
             println!("{}", title);
@@ -874,6 +879,41 @@ Examples:
 "##
         }
 
+        // === Readable ===
+        "readable" => {
+            r##"
+agent-browser readable - Readable page summary
+
+Usage: agent-browser readable [options]
+
+Extracts a simplified, structured view of the page content. Keeps headings,
+paragraphs, and lists while filtering CSS/SVG noise and limiting length.
+Useful when `snapshot` is too sparse and `get text` is too noisy.
+
+Options:
+  -s, --selector <sel>   Scope extraction to CSS selector (default: main)
+  -d, --depth <n>        Limit DOM traversal depth
+  -l, --limit <n>        Maximum output lines (default: unlimited)
+  --list-limit <n>       Maximum items per list/group (default: unlimited)
+  --line-length <n>      Maximum characters per line (default: unlimited)
+  --filters <mode>       Filter group mode: summary, compact, full
+  --no-links             Disable link references and link table
+  --dedupe-window <n>    Sliding window for duplicate suppression
+  --include-footer       Include footer/contentinfo sections
+  --include-shell        Include header/nav shell around main content
+
+Global Options:
+  --json                 Output as JSON
+  --session <name>       Use specific session
+
+Examples:
+  agent-browser readable
+  agent-browser readable -s main -d 5 -l 150
+  agent-browser readable --list-limit 10 --line-length 180
+  agent-browser open @L1             # Open a link ref from readable output
+"##
+        }
+
         // === Eval ===
         "eval" => {
             r##"
@@ -1574,6 +1614,7 @@ Core Commands:
   screenshot [path]          Take screenshot
   pdf <path>                 Save as PDF
   snapshot                   Accessibility tree with refs (for AI)
+  readable                   Readable page summary
   eval <js>                  Run JavaScript
   connect <port|url>         Connect to browser via CDP
   close                      Close browser
@@ -1634,6 +1675,18 @@ Snapshot Options:
   -d, --depth <n>            Limit tree depth
   -s, --selector <sel>       Scope to CSS selector
 
+Readable Options:
+  -s, --selector <sel>       Scope extraction to CSS selector (default: main)
+  -d, --depth <n>            Limit DOM traversal depth
+  -l, --limit <n>            Maximum output lines (default: unlimited)
+  --list-limit <n>           Maximum items per list/group (default: unlimited)
+  --line-length <n>          Maximum characters per line (default: unlimited)
+  --filters <mode>           Filter group mode: summary, compact, full
+  --no-links                 Disable link references and link table
+  --dedupe-window <n>        Sliding window for duplicate suppression
+  --include-footer           Include footer/contentinfo sections
+  --include-shell            Include header/nav shell around main content
+
 Options:
   --session <name>           Isolated session (or AGENT_BROWSER_SESSION env)
   --profile <path>           Persistent browser profile (or AGENT_BROWSER_PROFILE env)
@@ -1670,6 +1723,7 @@ Examples:
   agent-browser fill @e3 "test@example.com"
   agent-browser find role button click --name Submit
   agent-browser get text @e1
+  agent-browser readable                 # Readable page summary
   agent-browser screenshot --full
   agent-browser --cdp 9222 snapshot      # Connect via CDP port
   agent-browser --profile ~/.myapp open example.com  # Persistent profile

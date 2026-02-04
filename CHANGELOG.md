@@ -1,4 +1,11 @@
-# agent-browser
+# agent-browser-readable
+
+## 0.8.5
+
+### Patch Changes
+
+- Clarified project positioning as a fork based on AB `agent-browser`.
+- Improved docs around `readable` for fast Markdown-friendly page summaries.
 
 ## 0.8.4
 
